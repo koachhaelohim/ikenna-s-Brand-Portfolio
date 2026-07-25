@@ -89,18 +89,7 @@ export default function Home() {
           </div>
         )}
         {projects.length > 0 && (
-          <div
-            className="work-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-              gap: 1,
-              background: "var(--border)",
-              border: "1px solid var(--border)",
-              borderRadius: 14,
-              overflow: "hidden",
-            }}
-          >
+          <div className="work-grid">
             {projects.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
