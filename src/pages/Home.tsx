@@ -1,26 +1,42 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { SplitText } from "gsap/SplitText";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 import { useProjects } from "../hooks/useProjects";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import ProjectCard from "../components/ProjectCard";
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, SplitText);
 
 export default function Home() {
-  const { settings } = useSiteSettings();
+  const { settings, loading: settingsLoading } = useSiteSettings();
   const { projects, loading } = useProjects();
   const rootRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
+      const titleEl = titleRef.current;
+      let chars: Element[] = [];
+      let split: SplitText | null = null;
+
+      if (titleEl) {
+        split = SplitText.create(titleEl, {
+          type: "words,chars",
+          linesClass: "split-line",
+        });
+        chars = split.chars;
+      }
+
       // Hero entrance — runs once on load, no scroll trigger needed
-      const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 1 } });
-      tl.from(".hero-eyebrow", { opacity: 0, y: 16 })
-        .from(".hero-title", { opacity: 0, y: 44 }, "-=0.7")
-        .from(".hero-sub", { opacity: 0, y: 20 }, "-=0.65");
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".hero-eyebrow", { opacity: 0, y: 16, duration: 1 });
+      if (chars.length) {
+        tl.from(chars, { y: 80, duration: 0.6, ease: "circ.out", stagger: 0.02 }, "-=0.7");
+      }
+      tl.from(".hero-sub", { opacity: 0, y: 20, duration: 1 }, "-=0.4");
 
       // Section headers fade up as they enter view
       gsap.utils.toArray<HTMLElement>(".reveal-up").forEach((el) => {
@@ -55,8 +71,8 @@ export default function Home() {
     }, rootRef);
 
     return () => ctx.revert();
-    // re-run once projects have loaded so ScrollTrigger measures the real grid
-  }, [loading, projects.length]);
+    // re-run once settings/projects have loaded so SplitText/ScrollTrigger measure real content
+  }, [loading, projects.length, settingsLoading]);
 
   return (
     <div ref={rootRef}>
@@ -66,7 +82,7 @@ export default function Home() {
         <div className="hero-eyebrow" style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 22, fontFamily: "ui-monospace, SF Mono, Menlo, monospace" }}>
           {settings.location ? `Brand design studio — ${settings.location}` : "Brand design studio"}
         </div>
-        <h1 className="hero-title" style={{ fontSize: "clamp(42px,8vw,108px)", fontWeight: 600, letterSpacing: "-0.035em", lineHeight: 1.02, maxWidth: "16ch", fontFamily: "var(--font-display)" }}>
+        <h1 ref={titleRef} style={{ fontSize: "clamp(42px,8vw,108px)", fontWeight: 600, letterSpacing: "-0.035em", lineHeight: 1.02, maxWidth: "16ch", fontFamily: "var(--font-display)" }}>
           {settings.tagline}
         </h1>
         <p className="hero-sub" style={{ marginTop: 28, fontSize: "clamp(16px,1.6vw,20px)", color: "var(--text-muted)", maxWidth: "42ch", lineHeight: 1.5 }}>
