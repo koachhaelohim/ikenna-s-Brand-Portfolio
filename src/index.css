@@ -42,6 +42,3 @@ button, input, textarea, select {
   .work-grid { grid-template-columns: 1fr; }
 }
 
-.split-line {
-  overflow: hidden;
-}

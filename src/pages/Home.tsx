@@ -19,22 +19,23 @@ export default function Home() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       const titleEl = titleRef.current;
-      let chars: Element[] = [];
+      let lines: Element[] = [];
       let split: SplitText | null = null;
 
       if (titleEl) {
         split = SplitText.create(titleEl, {
-          type: "words,chars",
+          type: "lines",
+          mask: "lines", // auto-wraps each line in its own overflow-hidden mask
           linesClass: "split-line",
         });
-        chars = split.chars;
+        lines = split.lines;
       }
 
       // Hero entrance — runs once on load, no scroll trigger needed
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
       tl.from(".hero-eyebrow", { opacity: 0, y: 16, duration: 1 });
-      if (chars.length) {
-        tl.from(chars, { y: 80, duration: 0.6, ease: "circ.out", stagger: 0.02 }, "-=0.7");
+      if (lines.length) {
+        tl.from(lines, { yPercent: 115, duration: 1, ease: "expo.out", stagger: 0.1 }, "-=0.7");
       }
       tl.from(".hero-sub", { opacity: 0, y: 20, duration: 1 }, "-=0.4");
 
