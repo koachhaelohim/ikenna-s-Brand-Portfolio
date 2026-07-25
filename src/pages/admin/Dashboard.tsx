@@ -9,7 +9,7 @@ export default function Dashboard() {
   async function createProject() {
     const { data } = await supabase
       .from("projects")
-      .insert({ title: "Untitled project" })
+      .insert({ title: "Untitled project", sort_order: projects.length })
       .select()
       .single();
     if (data) navigate(`/admin/projects/${data.id}`);
@@ -23,6 +23,21 @@ export default function Dashboard() {
 
   async function togglePublish(id: string, published: boolean) {
     await supabase.from("projects").update({ published: !published }).eq("id", id);
+    refetch();
+  }
+
+  async function move(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= projects.length) return;
+
+    const current = projects[index];
+    const neighbor = projects[target];
+
+    // Swap sort_order between the two projects
+    await Promise.all([
+      supabase.from("projects").update({ sort_order: neighbor.sort_order }).eq("id", current.id),
+      supabase.from("projects").update({ sort_order: current.sort_order }).eq("id", neighbor.id),
+    ]);
     refetch();
   }
 
@@ -46,20 +61,43 @@ export default function Dashboard() {
 
       <button
         onClick={createProject}
-        style={{ background: "var(--text)", color: "var(--bg)", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 32 }}
+        style={{ background: "var(--text)", color: "var(--bg)", border: "none", borderRadius: 8, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}
       >
         + New project
       </button>
+      <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>
+        Use the arrows to reorder — this controls the order projects appear in on the site.
+      </div>
 
       {loading && <div style={{ color: "var(--text-dim)" }}>Loading…</div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "var(--border)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-        {projects.map((p) => (
+        {projects.map((p, i) => (
           <div key={p.id} style={{ background: "var(--surface)", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{p.title}</div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
-                {p.category || "Uncategorized"} · {p.published ? "Published" : "Draft"}
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <button
+                  onClick={() => move(i, -1)}
+                  disabled={i === 0}
+                  aria-label="Move up"
+                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 5, width: 22, height: 20, color: i === 0 ? "var(--text-dim)" : "var(--text)", cursor: i === 0 ? "default" : "pointer", fontSize: 11, lineHeight: 1, padding: 0 }}
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => move(i, 1)}
+                  disabled={i === projects.length - 1}
+                  aria-label="Move down"
+                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 5, width: 22, height: 20, color: i === projects.length - 1 ? "var(--text-dim)" : "var(--text)", cursor: i === projects.length - 1 ? "default" : "pointer", fontSize: 11, lineHeight: 1, padding: 0 }}
+                >
+                  ▼
+                </button>
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{p.title}</div>
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                  {p.category || "Uncategorized"} · {p.published ? "Published" : "Draft"}
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 14, fontSize: 13 }}>
