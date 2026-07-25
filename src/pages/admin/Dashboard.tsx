@@ -1,15 +1,24 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useProjects } from "../../hooks/useProjects";
+import type { Project } from "../../lib/types";
 
 export default function Dashboard() {
   const { projects, loading, refetch } = useProjects({ includeDrafts: true });
+  const [items, setItems] = useState<Project[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setItems(projects);
+  }, [projects]);
 
   async function createProject() {
     const { data } = await supabase
       .from("projects")
-      .insert({ title: "Untitled project", sort_order: projects.length })
+      .insert({ title: "Untitled project", sort_order: items.length })
       .select()
       .single();
     if (data) navigate(`/admin/projects/${data.id}`);
@@ -26,19 +35,27 @@ export default function Dashboard() {
     refetch();
   }
 
-  async function move(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= projects.length) return;
+  async function persistOrder(ordered: Project[]) {
+    await Promise.all(
+      ordered.map((p, i) =>
+        p.sort_order === i ? null : supabase.from("projects").update({ sort_order: i }).eq("id", p.id)
+      )
+    );
+  }
 
-    const current = projects[index];
-    const neighbor = projects[target];
-
-    // Swap sort_order between the two projects
-    await Promise.all([
-      supabase.from("projects").update({ sort_order: neighbor.sort_order }).eq("id", current.id),
-      supabase.from("projects").update({ sort_order: current.sort_order }).eq("id", neighbor.id),
-    ]);
-    refetch();
+  function handleDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const reordered = [...items];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setItems(reordered);
+    setDragIndex(null);
+    setOverIndex(null);
+    persistOrder(reordered);
   }
 
   async function signOut() {
@@ -66,32 +83,55 @@ export default function Dashboard() {
         + New project
       </button>
       <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>
-        Use the arrows to reorder — this controls the order projects appear in on the site.
+        Drag a row by its handle to reorder — this controls the order projects appear in on the site.
       </div>
 
       {loading && <div style={{ color: "var(--text-dim)" }}>Loading…</div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "var(--border)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-        {projects.map((p, i) => (
-          <div key={p.id} style={{ background: "var(--surface)", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        {items.map((p, i) => (
+          <div
+            key={p.id}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (overIndex !== i) setOverIndex(i);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(i);
+            }}
+            style={{
+              background: overIndex === i && dragIndex !== null && dragIndex !== i ? "var(--surface-2, #111113)" : "var(--surface)",
+              padding: "16px 20px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 16,
+              opacity: dragIndex === i ? 0.4 : 1,
+              borderTop: overIndex === i && dragIndex !== null && dragIndex !== i ? "2px solid var(--text)" : "2px solid transparent",
+              transition: "background 0.15s, opacity 0.15s",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <button
-                  onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                  aria-label="Move up"
-                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 5, width: 22, height: 20, color: i === 0 ? "var(--text-dim)" : "var(--text)", cursor: i === 0 ? "default" : "pointer", fontSize: 11, lineHeight: 1, padding: 0 }}
-                >
-                  ▲
-                </button>
-                <button
-                  onClick={() => move(i, 1)}
-                  disabled={i === projects.length - 1}
-                  aria-label="Move down"
-                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 5, width: 22, height: 20, color: i === projects.length - 1 ? "var(--text-dim)" : "var(--text)", cursor: i === projects.length - 1 ? "default" : "pointer", fontSize: 11, lineHeight: 1, padding: 0 }}
-                >
-                  ▼
-                </button>
+              <div
+                draggable
+                onDragStart={() => setDragIndex(i)}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                title="Drag to reorder"
+                style={{
+                  cursor: "grab",
+                  color: "var(--text-dim)",
+                  fontSize: 16,
+                  letterSpacing: "2px",
+                  padding: "4px 6px",
+                  userSelect: "none",
+                  lineHeight: 1,
+                }}
+              >
+                ⠿
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{p.title}</div>
