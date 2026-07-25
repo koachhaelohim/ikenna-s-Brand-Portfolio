@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import { useSiteSettings } from "../hooks/useSiteSettings";
@@ -8,7 +9,7 @@ import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import ProjectCard from "../components/ProjectCard";
 
-gsap.registerPlugin(ScrollTrigger, SplitText);
+gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
 export default function Home() {
   const { settings, loading: settingsLoading } = useSiteSettings();
@@ -16,14 +17,16 @@ export default function Home() {
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
+  // useGSAP runs in useLayoutEffect (before the browser paints) and is
+  // StrictMode-safe, so there's no flash of unanimated text and no
+  // double-run glitch in dev.
+  useGSAP(
+    () => {
       const titleEl = titleRef.current;
       let lines: Element[] = [];
-      let split: SplitText | null = null;
 
       if (titleEl) {
-        split = SplitText.create(titleEl, {
+        const split = SplitText.create(titleEl, {
           type: "lines",
           mask: "lines", // auto-wraps each line in its own overflow-hidden mask
           linesClass: "split-line",
@@ -69,11 +72,9 @@ export default function Home() {
         stagger: 0.1,
         scrollTrigger: { trigger: ".about-meta", start: "top 85%" },
       });
-    }, rootRef);
-
-    return () => ctx.revert();
-    // re-run once settings/projects have loaded so SplitText/ScrollTrigger measure real content
-  }, [loading, projects.length, settingsLoading]);
+    },
+    { scope: rootRef, dependencies: [loading, projects.length, settingsLoading] }
+  );
 
   return (
     <div ref={rootRef}>
