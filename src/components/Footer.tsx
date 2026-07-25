@@ -14,7 +14,7 @@ export default function Footer({ settings }: { settings: SiteSettings }) {
         gap: 20,
       }}
     >
-      <div style={{ fontSize: "clamp(24px,4vw,44px)", fontWeight: 600, letterSpacing: "-0.02em", maxWidth: "14ch", fontFamily: "var(--font-display)" }}>
+      <div className="reveal-up" style={{ fontSize: "clamp(24px,4vw,44px)", fontWeight: 600, letterSpacing: "-0.02em", maxWidth: "14ch", fontFamily: "var(--font-display)" }}>
         Let's build your identity.
       </div>
       <div style={{ display: "flex", gap: 26, fontSize: 13, color: "var(--text-muted)" }}>
